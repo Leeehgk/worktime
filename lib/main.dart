@@ -273,21 +273,15 @@ class _HomePageState extends State<HomePage> {
 
   double calculateHoursWorked(WorkDay day) {
     double totalHours = 0.0;
-    bool insideEntry = false; // Variável para rastrear se estamos dentro de uma entrada válida.
+    DateTime? lastEntryTime; // Inicializada como nula.
 
-    for (int i = 0; i < day.entries.length; i++) {
-      final entry = day.entries[i];
-
+    for (final entry in day.entries) {
       if (entry.isEntry) {
-        // Se a entrada atual for uma entrada, registre o momento em que começou.
-        insideEntry = true;
-        totalHours -= entry.timestamp.minute.toDouble() / 60; // Deduza os minutos da entrada.
-      } else {
-        // Se a entrada atual for uma saída, registre o momento em que terminou.
-        if (insideEntry) {
-          totalHours += entry.timestamp.minute.toDouble() / 60; // Adicione os minutos da saída.
-        }
-        insideEntry = false;
+        lastEntryTime = entry.timestamp;
+      } else if (lastEntryTime != null) {
+        final hoursWorked = entry.timestamp.difference(lastEntryTime!).inMinutes / 60.0;
+        totalHours += hoursWorked;
+        lastEntryTime = null; // Reinicia a hora da última entrada.
       }
     }
 
