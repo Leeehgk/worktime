@@ -55,8 +55,8 @@ class WorkDay {
     return WorkDay(
       DateTime.parse(json['date']),
     )..entries.addAll(
-        (json['entries'] as List).map((entryJson) => Entry.fromJson(entryJson)),
-      );
+      (json['entries'] as List).map((entryJson) => Entry.fromJson(entryJson)),
+    );
   }
 }
 
@@ -86,7 +86,7 @@ enum ExportPeriod { Week, Month }
 
 class _HomePageState extends State<HomePage> {
   List<WorkDay> workDays = [];
-  double dailyHours = 8.0;
+  double dailyHours = 8.0; // Defina aqui o valor fixo de 8 horas
 
   @override
   Widget build(BuildContext context) {
@@ -117,19 +117,6 @@ class _HomePageState extends State<HomePage> {
   Widget _buildDailyTab() {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextFormField(
-            keyboardType: TextInputType.number,
-            initialValue: dailyHours.toString(),
-            onChanged: (value) {
-              setState(() {
-                dailyHours = double.tryParse(value) ?? 0.0;
-              });
-            },
-            decoration: InputDecoration(labelText: 'Horas Diárias de Trabalho'),
-          ),
-        ),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -191,7 +178,11 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (isEntry) {
-      currentDay.entries.add(Entry(now, true));
+      // Verifica se a última entrada é uma saída ou se a lista de entradas está vazia.
+      final lastEntryIndex = currentDay.entries.lastIndexWhere((entry) => entry.isEntry);
+      if (lastEntryIndex == -1 || !currentDay.entries[lastEntryIndex].isEntry) {
+        currentDay.entries.add(Entry(now, true));
+      }
     } else {
       final lastEntryIndex = currentDay.entries.lastIndexWhere((entry) => entry.isEntry);
       if (lastEntryIndex != -1) {
@@ -282,14 +273,24 @@ class _HomePageState extends State<HomePage> {
 
   double calculateHoursWorked(WorkDay day) {
     double totalHours = 0.0;
-    for (int i = 0; i < day.entries.length - 1; i += 2) {
+    bool insideEntry = false; // Variável para rastrear se estamos dentro de uma entrada válida.
+
+    for (int i = 0; i < day.entries.length; i++) {
       final entry = day.entries[i];
-      final exit = day.entries[i + 1];
-      if (entry.isEntry && !exit.isEntry) {
-        totalHours +=
-            exit.timestamp.difference(entry.timestamp).inHours.toDouble();
+
+      if (entry.isEntry) {
+        // Se a entrada atual for uma entrada, registre o momento em que começou.
+        insideEntry = true;
+        totalHours -= entry.timestamp.minute.toDouble() / 60; // Deduza os minutos da entrada.
+      } else {
+        // Se a entrada atual for uma saída, registre o momento em que terminou.
+        if (insideEntry) {
+          totalHours += entry.timestamp.minute.toDouble() / 60; // Adicione os minutos da saída.
+        }
+        insideEntry = false;
       }
     }
+
     return totalHours;
   }
 
